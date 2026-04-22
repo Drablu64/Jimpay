@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Warga — Jimpitan</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .warga-layout { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+    .section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--teks-sekunder); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+    .dot-lunas { background: var(--hijau-medium); }
+    .dot-belum { background: var(--merah); }
+    .dot-pending { background: #e6a816; }
+    .dot-upcoming { background: var(--border); }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--putih);
+      border-radius: var(--radius-lg);
+      width: 100%; max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      transform: translateY(8px);
+      transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .modal-title { font-size: 16px; font-weight: 600; flex: 1; }
+    .modal-close { width: 28px; height: 28px; border: none; background: var(--abu-muda); border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+
+    .checkbox-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .checkbox-item:last-child { border-bottom: none; }
+    .checkbox-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--hijau); cursor: pointer; }
+    .cb-info { flex: 1; }
+    .cb-bulan { font-size: 13px; font-weight: 500; }
+    .cb-nominal { font-size: 12px; color: var(--teks-sekunder); }
+    .cb-badge { margin-left: auto; }
+
+    .total-box {
+      display: flex; justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .step-indicator { display: flex; gap: 8px; margin-bottom: 20px; }
+    .step {
+      flex: 1; padding: 8px; border-radius: var(--radius);
+      text-align: center; font-size: 11px; font-weight: 500;
+    }
+    .step.active { background: var(--hijau-muda); color: var(--hijau); }
+    .step.done { background: var(--hijau); color: white; }
+    .step.inactive { background: var(--abu-muda); color: var(--abu); }
+
+    .success-box {
+      text-align: center; padding: 24px 16px;
+    }
+    .success-icon {
+      width: 56px; height: 56px;
+      background: var(--hijau-muda);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 26px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    Jimpitan Warga
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-user">
+    <span class="avatar">SW</span>
+    <div>
+      <div style="font-size:13px;font-weight:500;color:var(--teks);">Sugiyanto W.</div>
+      <div style="font-size:11px;">RT 04 · No. 12</div>
+    </div>
+    <a href="login.html" class="btn btn-outline btn-sm" style="margin-left:8px;">Keluar</a>
+  </div>
+</div>
+
+<div class="warga-layout">
+
+  <!-- ALERT -->
+  <div class="alert alert-warning">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>Kamu memiliki <strong>2 bulan</strong> yang belum terbayar. Segera lakukan setoran agar tidak menunggak.</span>
+  </div>
+
+  <!-- STAT -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Sudah Bayar</div>
+      <div class="stat-val hijau">9</div>
+      <div class="stat-sub">bulan tahun ini</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Belum Bayar</div>
+      <div class="stat-val merah">2</div>
+      <div class="stat-sub">bulan menunggak</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Menunggu Verifikasi</div>
+      <div class="stat-val kuning">1</div>
+      <div class="stat-sub">dokumen</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Setoran</div>
+      <div class="stat-val" style="font-size:18px;">Rp 54.000</div>
+      <div class="stat-sub">tahun 2025</div>
+    </div>
+  </div>
+
+  <!-- BULAN GRID -->
+  <div class="card">
+    <div class="row-flex" style="margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">Status pembayaran 2025</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot dot-lunas"></div> Lunas</div>
+        <div class="legend-item"><div class="legend-dot dot-pending"></div> Pending</div>
+        <div class="legend-item"><div class="legend-dot dot-belum"></div> Belum</div>
+      </div>
+    </div>
+    <div class="month-grid">
+      <div class="month-box lunas"><div class="month-name">Jan</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Feb</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Mar</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Apr</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Mei</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Jun</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Jul</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Ags</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box lunas"><div class="month-name">Sep</div><span class="badge badge-lunas">Lunas</span></div>
+      <div class="month-box pending"><div class="month-name">Okt</div><span class="badge badge-pending">Pending</span></div>
+      <div class="month-box belum"><div class="month-name">Nov</div><span class="badge badge-belum">Belum</span></div>
+      <div class="month-box upcoming"><div class="month-name">Des</div><span style="font-size:11px;">—</span></div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Bayar Sekarang
+    </button>
+  </div>
+
+  <!-- RIWAYAT -->
+  <div class="card">
+    <div class="card-title">Riwayat setoran terakhir</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bulan</th>
+            <th>Nominal</th>
+            <th>Tanggal kirim</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Oktober 2025</td>
+            <td>Rp 6.000</td>
+            <td>18 Okt 2025</td>
+            <td><span class="badge badge-pending">Menunggu verifikasi</span></td>
+          </tr>
+          <tr>
+            <td>September 2025</td>
+            <td>Rp 6.000</td>
+            <td>05 Sep 2025</td>
+            <td><span class="badge badge-lunas">Lunas</span></td>
+          </tr>
+          <tr>
+            <td>Agustus 2025</td>
+            <td>Rp 6.000</td>
+            <td>03 Ags 2025</td>
+            <td><span class="badge badge-lunas">Lunas</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SETORAN -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Setoran Jimpitan</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- STEP 1: Pilih bulan -->
+    <div id="step-1">
+      <div class="step-indicator">
+        <div class="step active">1 Pilih bulan</div>
+        <div class="step inactive">2 Upload bukti</div>
+        <div class="step inactive">3 Selesai</div>
+      </div>
+      <p style="font-size:13px;color:var(--teks-sekunder);margin-bottom:14px;">Centang bulan yang ingin kamu bayar sekarang.</p>
+
+      <div class="checkbox-item">
+        <input type="checkbox" id="cb-nov" onchange="hitungTotal()" />
+        <label for="cb-nov" class="cb-info" style="cursor:pointer;">
+          <div class="cb-bulan">November 2025</div>
+          <div class="cb-nominal">Rp 6.000</div>
+        </label>
+        <span class="badge badge-belum cb-badge">Belum bayar</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <input type="checkbox" id="cb-des" onchange="hitungTotal()" disabled style="width:16px;height:16px;" />
+        <label for="cb-des" class="cb-info">
+          <div class="cb-bulan" style="color:var(--abu);">Desember 2025</div>
+          <div class="cb-nominal">Belum jatuh tempo</div>
+        </label>
+        <span class="badge" style="background:var(--abu-muda);color:var(--abu);margin-left:auto;">—</span>
+      </div>
+
+      <div class="total-box">
+        <span>Total pembayaran</span>
+        <span id="total-val">Rp 0</span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="goStep2()">Lanjut →</button>
+    </div>
+
+    <!-- STEP 2: Upload -->
+    <div id="step-2" style="display:none;">
+      <div class="step-indicator">
+        <div class="step done">✓ Pilih bulan</div>
+        <div class="step active">2 Upload bukti</div>
+        <div class="step inactive">3 Selesai</div>
+      </div>
+      <div class="alert alert-info" style="font-size:12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Bukti pembayaran akan diverifikasi manual oleh admin sebelum status berubah menjadi lunas.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Upload foto / scan bukti pembayaran *</label>
+        <div class="upload-box" id="upload-box" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">📎</div>
+          <div id="upload-text">Klik untuk memilih file</div>
+          <div style="font-size:11px;margin-top:4px;">JPG, PNG, PDF — maks 5 MB</div>
+        </div>
+        <input type="file" id="file-input" accept="image/*,.pdf" style="display:none;" onchange="fileSelected(event)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Catatan (opsional)</label>
+        <textarea class="form-textarea" id="catatan" placeholder="Misal: bayar via transfer BRI, nomor ref 123456..."></textarea>
+      </div>
+      <div class="row-flex">
+        <button class="btn btn-outline" onclick="goStep1()">← Kembali</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="kirimSetoran()">Kirim Setoran</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Sukses -->
+    <div id="step-3" style="display:none;">
+      <div class="step-indicator">
+        <div class="step done">✓ Pilih bulan</div>
+        <div class="step done">✓ Upload bukti</div>
+        <div class="step done">✓ Terkirim</div>
+      </div>
+      <div class="success-box">
+        <div class="success-icon">✅</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Setoran berhasil dikirim!</div>
+        <div style="font-size:13px;color:var(--teks-sekunder);line-height:1.7;">
+          Bukti pembayaran kamu sudah masuk ke admin.<br>
+          Status akan berubah <strong>Lunas</strong> setelah diverifikasi.
+        </div>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="closeModal(); location.reload();">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /*
+   * TODO — Sambungkan ke backend:
+   * 
+   * 1. Fetch status pembayaran warga:
+   *    GET /api/pembayaran?warga_id=... → isi grid bulan secara dinamis
+   * 
+   * 2. Kirim setoran:
+   *    POST /api/setoran (FormData: bulan[], nominal, file, catatan)
+   * 
+   * 3. Fetch riwayat:
+   *    GET /api/riwayat?warga_id=... → isi tabel riwayat
+   */
+
+  function openModal() {
+    document.getElementById('modal-overlay').classList.add('open');
+    goStep1();
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  }
+
+  function hitungTotal() {
+    const checked = document.getElementById('cb-nov').checked;
+    document.getElementById('total-val').textContent = checked ? 'Rp 6.000' : 'Rp 0';
+  }
+
+  function goStep1() {
+    document.getElementById('step-1').style.display = 'block';
+    document.getElementById('step-2').style.display = 'none';
+    document.getElementById('step-3').style.display = 'none';
+    document.getElementById('modal-title').textContent = 'Setoran Jimpitan';
+  }
+
+  function goStep2() {
+    if (!document.getElementById('cb-nov').checked) {
+      alert('Pilih minimal satu bulan terlebih dahulu.');
+      return;
+    }
+    document.getElementById('step-1').style.display = 'none';
+    document.getElementById('step-2').style.display = 'block';
+    document.getElementById('modal-title').textContent = 'Upload Bukti Pembayaran';
+  }
+
+  function fileSelected(e) {
+    const file = e.target.files[0];
+    if (file) {
+      document.getElementById('upload-text').textContent = '✓ ' + file.name;
+      document.getElementById('upload-box').style.borderColor = 'var(--hijau-medium)';
+      document.getElementById('upload-box').style.background = 'var(--hijau-muda)';
+    }
+  }
+
+  function kirimSetoran() {
+    const file = document.getElementById('file-input').files[0];
+    if (!file) {
+      alert('Harap upload bukti pembayaran terlebih dahulu.');
+      return;
+    }
+    /*
+     * TODO: ganti simulasi ini dengan:
+     * const form = new FormData();
+     * form.append('file', file);
+     * form.append('bulan', 'November');
+     * form.append('catatan', document.getElementById('catatan').value);
+     * await fetch('/api/setoran', { method: 'POST', body: form });
+     */
+    document.getElementById('step-2').style.display = 'none';
+    document.getElementById('step-3').style.display = 'block';
+    document.getElementById('modal-title').textContent = 'Berhasil!';
+  }
+</script>
+</body>
+</html>
